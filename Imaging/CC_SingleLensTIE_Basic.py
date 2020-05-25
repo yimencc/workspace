@@ -13,7 +13,7 @@ from numpy import fft
 
 
 # Import Image
-
+# I have just added a single line, did you find it?
 
 def show_im(im_array):
     plt.imshow(im_array, cmap='gray')
