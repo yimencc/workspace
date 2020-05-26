@@ -5,15 +5,7 @@ import PIL.Image as Im
 import PIL
 import os
 import math
-from numpy.fft import fft2, fftshift, ifft2, ifftshift
-
-
-def cc_fft2(img):
-    return fftshift(fft2(ifftshift(img)))
-
-
-def cc_ifft2(img):
-    return fftshift(ifft2(ifftshift(img)))
+from cc_math import ft2, ift2, img_scale
 
 
 class ImageProcess:
@@ -45,17 +37,17 @@ class ImageProcess:
             #       "aft_h: ", self.height)
         if crop_box is None:
             if self.width >= self.height:
-                left = math.floor((self.width-int(crop_rate*self.height))/2)
-                right = math.floor((self.width+int(crop_rate*self.height))/2)
-                up = math.floor((self.height-int(crop_rate*self.height))/2)
-                down = math.floor((self.height+int(crop_rate*self.height))/2)
+                left = math.floor((self.width - int(crop_rate * self.height)) / 2)
+                right = math.floor((self.width + int(crop_rate * self.height)) / 2)
+                up = math.floor((self.height - int(crop_rate * self.height)) / 2)
+                down = math.floor((self.height + int(crop_rate * self.height)) / 2)
                 crop_box = [left, up, right, down]
                 # print(crop_box)
             else:
-                left = math.floor((self.width-int(crop_rate*self.width))/2)
-                right = math.floor((self.width+int(crop_rate*self.width))/2)
-                up = math.floor((self.height-int(crop_rate*self.width))/2)
-                down = math.floor((self.height+int(crop_rate*self.width))/2)
+                left = math.floor((self.width - int(crop_rate * self.width)) / 2)
+                right = math.floor((self.width + int(crop_rate * self.width)) / 2)
+                up = math.floor((self.height - int(crop_rate * self.width)) / 2)
+                down = math.floor((self.height + int(crop_rate * self.width)) / 2)
                 crop_box = [left, up, right, down]
                 # print(crop_box)
 
@@ -88,7 +80,8 @@ class Check:
         if name is not None:
             self.name = name
 
-    def multi_img(self, plot_title=None,
+    @staticmethod
+    def multi_img(plot_title=None,
                   show_extremum=False,
                   ticks_trun_off=True,
                   colorbar_ticks_num=None,
@@ -151,7 +144,8 @@ class Check:
         plt.tight_layout()
         plt.show()
 
-    def wavefront(self, wave_front, name=None, extremun=True):
+    @staticmethod
+    def wavefront(wave_front, name=None, extremun=True):
         amp = np.abs(wave_front)
         pha = np.angle(wave_front)
         if extremun:
@@ -175,7 +169,8 @@ class Check:
         plt.tight_layout(pad=0.5, w_pad=0.4, h_pad=0.4)
         plt.show()
 
-    def directly_propagate(self, input_list, name=None, extremun=True):
+    @staticmethod
+    def directly_propagate(input_list, name=None, extremun=True):
         if extremun:
             print("picture 0 min:", np.min(input_list[0]),
                   "picture 0 max:", np.max(input_list[0]))
@@ -245,10 +240,10 @@ class WavefrontPropagate:
         hz = np.exp(1j*2*np.pi/self.lambda_*d*np.sqrt(1-(self.lambda_*self.fx_mat)**2
                                                       - (self.lambda_*self.fy_mat)**2))
         if not second_version:
-            self.wavefront = cc_ifft2(cc_fft2(self.wavefront)*hz)
+            self.wavefront = ift2(ft2(self.wavefront)*hz)
             return self
         else:
-            return cc_ifft2(cc_fft2(self.wavefront) * hz)
+            return ift2(ft2(self.wavefront) * hz)
 
     def lens_transfer(self, focus):
         t = np.exp(-1j*np.pi/self.lambda_/focus*(self.dx_mat**2+self.dy_mat**2))
@@ -299,12 +294,12 @@ def tie_algorithm(input0, input1, input2, img_size,
     # TIE solution
     derivative = k*(input2-input1)/(2*delta)
     fmat_square = 1/(fx_mat**2+fy_mat**2+epsilon)
-    temp1 = cc_fft2(derivative)*fmat_square
-    temp_x = cc_ifft2(temp1*fx_mat)/input0
-    temp_x = cc_fft2(temp_x)*fx_mat
-    temp_y = cc_ifft2(temp1*fy_mat)/input0
-    temp_y = cc_fft2(temp_y)*fy_mat
-    p_xy = cc_ifft2((temp_x+temp_y)*fmat_square)
+    temp1 = ft2(derivative)*fmat_square
+    temp_x = ift2(temp1*fx_mat)/input0
+    temp_x = ft2(temp_x)*fx_mat
+    temp_y = ift2(temp1*fy_mat)/input0
+    temp_y = ft2(temp_y)*fy_mat
+    p_xy = ift2((temp_x+temp_y)*fmat_square)
     p_xy = np.real(p_xy)
     if normalization:
         p_xy = p_xy - (np.max(p_xy)-np.min(p_xy))/2
@@ -313,9 +308,4 @@ def tie_algorithm(input0, input1, input2, img_size,
 
 
 if __name__ == '__main__':
-    file_path = "C:\\Users\\chenchao\\.keras\\datasets\\HAM10000_images"
-    file_list = os.listdir(file_path)[:100]
-    img_obj = ImageProcess(os.path.join(file_path, file_list[0]))
-    img_obj.image_crop()
-    plt.imshow(np.asarray(img_obj.image), cmap="gray")
-    plt.show()
+    pass
