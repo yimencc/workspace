@@ -1,0 +1,4 @@
+# ignore jupyter notebook/lab files and pycharm files
+.idea
+.ipynb_checkpoints
+__pycache__
