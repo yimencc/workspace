@@ -32,7 +32,6 @@ def MSEs(imgs_1, imgs_2):
         mse_list.append(mse)
     return mse_list
 
-
 def PCCs(imgs_1, imgs_2):
     pcc_list = []
     for i, j in zip(imgs_1, imgs_2):
@@ -41,11 +40,11 @@ def PCCs(imgs_1, imgs_2):
     return pcc_list
 
 
-def ft2(x):
+def cc_fft2(x):
     return fft.fftshift(fft.fft2(fft.ifftshift(x)))
 
 
-def ift2(x):
+def cc_ifft2(x):
     return fft.fftshift(fft.ifft2(fft.ifftshift(x)))
 
 
