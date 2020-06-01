@@ -226,14 +226,26 @@ class Wavefront:
         self.wavefront = ift2(ft2(self.wavefront) * hz)
         return self
 
-    def lens_transfer(self, focus):
-        total_s = (self.p_n[-1]*self.p_s, self.p_n[0]*self.p_s)
-        dx = np.linspace(-total_s[-1]/2, total_s[-1]/2, self.p_n[-1])
-        dy = np.linspace(-total_s[0]/2, total_s[0]/2, self.p_n[0])
+    def lens_transfer(self, focus, obj_na=0.5, **kwargs):
+        """
+        :param focus:
+        :param kwargs: "pupil_plane" is used for checking lens.
+        :return:
+        """
+        f_cutoff = obj_na * self.k
+        len_pixel_size = 2*np.pi/f_cutoff
+        
+        total_s = [self.p_n[-1]*self.p_s, self.p_n[0]*self.p_s]  # [total_size_x, total_size_y]
+        len_pixel_num = [t_s // len_pixel_size for t_s in total_s]  # [pixel_num_x, pixel_num_y]
+        
+        dx = np.linspace(-total_s[0]/2, total_s[0]/2, int(len_pixel_num[0]))
+        dy = np.linspace(-total_s[1]/2, total_s[1]/2, int(len_pixel_num[1]))
         [dx_mat, dy_mat] = np.meshgrid(dx, dy)
         t = np.exp(-1j*self.k * (dx_mat**2+dy_mat**2)/focus/2)
-        self.wavefront = self.wavefront*t
-        return self
+#         self.wavefront = self.wavefront*t
+#         if "pupil_plane" in kwargs.keys():
+#             self.lens_pupil_plane = t
+        return t
 
     def get_amplitude(self):
         return np.abs(self.wavefront)
@@ -248,7 +260,14 @@ class Wavefront:
     @staticmethod
     def forward_propagate(wavefront, wavelength, pixel_size, d):
         wf_obj = Wavefront(wavefront, wavelength, pixel_size)
-        return wf_obj.spatial_transfer(d).wavefront
+        return wf_obj.spatial_transfer(d)
+
+    @staticmethod
+    def pupil_propagate(wavefront, wavelength, pixel_size, focus, out_pupil=False):
+        wf_obj = Wavefront(wavefront, wavelength, pixel_size)
+        if out_pupil:
+            return wf_obj.lens_transfer(focus, pupil_plane=True)
+        return wf_obj.lens_transfer(focus)
 
     @staticmethod
     def multi_focus_img(wavefront, delta_d, wavelength, pixel_size):
