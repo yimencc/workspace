@@ -226,20 +226,21 @@ class Wavefront:
         self.wavefront = ift2(ft2(self.wavefront) * hz)
         return self
 
-    def lens_transfer(self, focus, obj_na=0.5, **kwargs):
+    def lens_transfer(self, d1, focus, **kwargs):
         """
-        :param focus:
+        :param d1: distance between object wavefront and lens.
+        :param focus: lens focus.
         :param kwargs: "pupil_plane" is used for checking lens.
         :return:
         """
-        f_cutoff = obj_na * self.k
-        len_pixel_size = 2*np.pi/f_cutoff
+        k_p = np.pi/self.p_s
+        sin_theta = k_p / self.k
+        tan_theta = np.tan(np.arcsin(sin_theta))
+        lens_size = [pixel_num*self.p_s+2*tan_theta*d1 for pixel_num in self.p_n]  # [pixel_num_x, pixel_num_y]
+        lens_pixel_num = [l_s//self.p_s for l_s in lens_size]
         
-        total_s = [self.p_n[-1]*self.p_s, self.p_n[0]*self.p_s]  # [total_size_x, total_size_y]
-        len_pixel_num = [t_s // len_pixel_size for t_s in total_s]  # [pixel_num_x, pixel_num_y]
-        
-        dx = np.linspace(-total_s[0]/2, total_s[0]/2, int(len_pixel_num[0]))
-        dy = np.linspace(-total_s[1]/2, total_s[1]/2, int(len_pixel_num[1]))
+        dx = np.linspace(-lens_size[1]/2, lens_size[1]/2, lens_pixel_num[1])
+        dy = np.linspace(-lens_size[0]/2, lens_size[0]/2, lens_pixel_num[0])
         [dx_mat, dy_mat] = np.meshgrid(dx, dy)
         t = np.exp(-1j*self.k * (dx_mat**2+dy_mat**2)/focus/2)
 #         self.wavefront = self.wavefront*t
