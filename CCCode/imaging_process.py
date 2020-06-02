@@ -226,27 +226,40 @@ class Wavefront:
         self.wavefront = ift2(ft2(self.wavefront) * hz)
         return self
 
-    def lens_transfer(self, d1, focus, **kwargs):
+    def lens_transfer(self, d1, focus, d2, **kwargs):
         """
         :param d1: distance between object wavefront and lens.
         :param focus: lens focus.
         :param kwargs: "pupil_plane" is used for checking lens.
+        :param d2: distance between lens and imaging plane
         :return:
         """
         k_p = np.pi/self.p_s
         sin_theta = k_p / self.k
         tan_theta = np.tan(np.arcsin(sin_theta))
-        lens_size = [pixel_num*self.p_s+2*tan_theta*d1 for pixel_num in self.p_n]  # [pixel_num_x, pixel_num_y]
-        lens_pixel_num = [l_s//self.p_s for l_s in lens_size]
+        lens_size = np.array([pixel_num*self.p_s+2*tan_theta*d1 for pixel_num in self.p_n])  # [pixel_num_x, pixel_num_y])
+        lens_pixel_num = np.array([l_s//self.p_s for l_s in lens_size])
         
-        dx = np.linspace(-lens_size[1]/2, lens_size[1]/2, lens_pixel_num[1])
-        dy = np.linspace(-lens_size[0]/2, lens_size[0]/2, lens_pixel_num[0])
+        dx = np.linspace(-lens_size[-1]/2, lens_size[-1]/2, int(lens_pixel_num[-1]))
+        dy = np.linspace(-lens_size[0]/2, lens_size[0]/2, int(lens_pixel_num[0]))
         [dx_mat, dy_mat] = np.meshgrid(dx, dy)
         t = np.exp(-1j*self.k * (dx_mat**2+dy_mat**2)/focus/2)
-#         self.wavefront = self.wavefront*t
-#         if "pupil_plane" in kwargs.keys():
-#             self.lens_pupil_plane = t
-        return t
+        
+        target_pl = np.zeros(t.shape).astype(np.complex)
+        target_c_x = target_pl.shape[-1]//2
+        target_c_y = target_pl.shape[0]//2
+        obj_w_half = self.p_n[-1]//2
+        obj_h_half = self.p_n[0]//2
+        idx_x1 = int(target_c_x - obj_w_half)
+        idx_x2 = int(target_c_x - obj_w_half + self.p_n[-1])
+        idx_y1 = int(target_c_y - obj_h_half)
+        idx_y2 = int(target_c_y - obj_h_half + self.p_n[0])
+        target_pl[idx_y1:idx_y2, idx_x1:idx_x2] = self.wavefront
+        
+        pre_lens_pl = Wavefront.forward_propagate(target_pl, self.wavelength,
+                                                  self.p_s, d1).wavefront
+        post_lens_ft = ift2(pre_lens_pl * t)
+        return pre_lens_pl, post_lens_ft
 
     def get_amplitude(self):
         return np.abs(self.wavefront)
