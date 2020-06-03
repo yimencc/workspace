@@ -237,7 +237,10 @@ class Wavefront:
         k_p = np.pi/self.p_s
         sin_theta = k_p / self.k
         tan_theta = np.tan(np.arcsin(sin_theta))
-        lens_size = np.array([pixel_num*self.p_s+2*tan_theta*d1 for pixel_num in self.p_n])  # [pixel_num_x, pixel_num_y])
+        # lens_size = np.array([pixel_num*self.p_s+2*tan_theta*d1
+        #                       for pixel_num in self.p_n])  # [pixel_num_x, pixel_num_y])
+        lens_size = np.array([(pixel_num-np.min(self.p_n))*self.p_s+2*tan_theta*d1
+                             for pixel_num in self.p_n])
         lens_pixel_num = np.array([l_s//self.p_s for l_s in lens_size])
         
         dx = np.linspace(-lens_size[-1]/2, lens_size[-1]/2, int(lens_pixel_num[-1]))
@@ -255,11 +258,19 @@ class Wavefront:
         idx_y1 = int(target_c_y - obj_h_half)
         idx_y2 = int(target_c_y - obj_h_half + self.p_n[0])
         target_pl[idx_y1:idx_y2, idx_x1:idx_x2] = self.wavefront
-        
-        pre_lens_pl = Wavefront.forward_propagate(target_pl, self.wavelength,
-                                                  self.p_s, d1).wavefront
-        post_lens_ft = ift2(pre_lens_pl * t)
-        return pre_lens_pl, post_lens_ft
+
+        fx = 2*np.pi*np.linspace(-1/self.p_s/2, 1/self.p_s/2, int(lens_pixel_num[-1]))
+        fy = 2*np.pi*np.linspace(-1/self.p_s/2, 1/self.p_s/2, int(lens_pixel_num[0]))
+        [fx_mat, fy_mat] = np.meshgrid(fx, fy)
+        hz1 = np.exp(1j*self.k*d1*np.sqrt(1-(fx_mat/self.k)**2-(fy_mat/self.k)**2))
+
+        pre_lens_ft = ft2(target_pl) * hz1
+        post_lens_ft = ft2(ift2(pre_lens_ft) * t)
+
+        hz2 = np.exp(1j*self.k*d2*np.sqrt(1-(fx_mat/self.k)**2-(fy_mat/self.k)**2))
+        imaging_pl = ift2(post_lens_ft * hz2)[idx_y1:idx_y2, idx_x1:idx_x2]
+        # return idx_x1, idx_x2, idx_y1, idx_y2, target_pl, pre_lens_ft, post_lens_ft, imaging_pl
+        return imaging_pl
 
     def get_amplitude(self):
         return np.abs(self.wavefront)
@@ -285,8 +296,8 @@ class Wavefront:
 
     @staticmethod
     def multi_focus_img(wavefront, delta_d, wavelength, pixel_size):
-        wavefront_minus = Wavefront.forward_propagate(wavefront, wavelength, pixel_size, -delta_d)
-        wavefront_plus = Wavefront.forward_propagate(wavefront, wavelength, pixel_size, delta_d)
+        wavefront_minus = Wavefront.forward_propagate(wavefront, wavelength, pixel_size, -delta_d).wavefront
+        wavefront_plus = Wavefront.forward_propagate(wavefront, wavelength, pixel_size, delta_d).wavefront
         i_focus = abs(wavefront*wavefront.conj())
         i_minus = abs(wavefront_minus*wavefront_minus.conj())
         i_plus = abs(wavefront_plus*wavefront_plus.conj())
@@ -314,7 +325,7 @@ def tie_solution(i_focus, i_minus, i_plus, delta_d, wavelength, pixel_size, epsi
     return ift2((temp_x+temp_y)*fmat_square).real
 
 
-if __name__ == '__main__':
+def main():
     # import images
     imgs_path = "D:\\Workspace\\datasets\\open_image_val_standard"
     imgs_name_list = os.listdir(imgs_path)[0:2]
@@ -323,29 +334,33 @@ if __name__ == '__main__':
     pha_img = img_val_norm(resize(sio.imread(imgs_fpath_list[1]), (512, 512)), 0.5, 1.5)
 
     # Imaging
-    EPSILON = 1e6
-    DELTA_D = 1e-3
-    WAVELENGTH = 500e-9
-    PIXEL_SIZE = 5e-6
-    i_focus, i_minus, i_plus = Wavefront.multi_focus_img(Wavefront.get_wf(amp_img, pha_img),
-                                                         delta_d=DELTA_D,
-                                                         wavelength=WAVELENGTH,
-                                                         pixel_size=PIXEL_SIZE)
-    p_xy = tie_solution(i_focus, i_minus, i_plus,
-                        delta_d=DELTA_D,
-                        wavelength=WAVELENGTH,
-                        pixel_size=PIXEL_SIZE,
-                        epsilon=EPSILON)
+    # EPSILON = 1e6
+    # DELTA_D = 1e-3
+    # WAVELENGTH = 500e-9
+    # PIXEL_SIZE = 5e-6
+    # i_focus, i_minus, i_plus = Wavefront.multi_focus_img(Wavefront.from_bioimage(amp_img, pha_img),
+    #                                                      delta_d=DELTA_D,
+    #                                                      wavelength=WAVELENGTH,
+    #                                                      pixel_size=PIXEL_SIZE)
+    # p_xy = tie_solution(i_focus, i_minus, i_plus,
+    #                     delta_d=DELTA_D,
+    #                     wavelength=WAVELENGTH,
+    #                     pixel_size=PIXEL_SIZE,
+    #                     epsilon=EPSILON)
+    #
+    # plt.figure(figsize=[17, 5])
+    # plt.subplot(131)
+    # plt.imshow(pha_img, cmap="gray")
+    # plt.colorbar()
+    # plt.subplot(132)
+    # plt.imshow((i_minus+i_plus)/2, cmap="gray")
+    # plt.colorbar()
+    # plt.subplot(133)
+    # plt.imshow(p_xy, cmap="gray")
+    # plt.colorbar()
+    # plt.tight_layout()
+    # plt.show()
 
-    plt.figure(figsize=[17, 5])
-    plt.subplot(131)
-    plt.imshow(pha_img, cmap="gray")
-    plt.colorbar()
-    plt.subplot(132)
-    plt.imshow((i_minus+i_plus)/2, cmap="gray")
-    plt.colorbar()
-    plt.subplot(133)
-    plt.imshow(p_xy, cmap="gray")
-    plt.colorbar()
-    plt.tight_layout()
-    plt.show()
+
+if __name__ == '__main__':
+    main()
