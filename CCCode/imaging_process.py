@@ -92,72 +92,56 @@ class Check:
         if name is not None:
             self.name = name
 
-    def multi_img(self, plot_title=None,
-                  show_extremum=False,
+    @staticmethod
+    def multi_img(plot_title=None,
                   ticks_trun_off=True,
                   colorbar_ticks_num=None,
-                  img_list=None,
-                  name_list=None,
                   **pic):
-        if img_list is not None:
-            len_img = len(img_list)
-        else:
-            len_img = len(pic)
+        """
+        :param plot_title:
+        :param ticks_trun_off:
+        :param colorbar_ticks_num:
+        :param pic:
+        :return:
+
+        Example:
+            Check.multi_img(img_1=img_a, img_2=img_b)
+        """
+
+        len_img = len(pic)
+
         if 0 < len_img <= 2:
             row_num = 1
             colum_num = 2
-            fig_size = [8, 4]
+            fig_size = [12, 5]
         elif 2 < len_img <= 4:
             row_num = 2
             colum_num = 2
-            fig_size = [8, 5.5]
+            fig_size = [12, 9]
         elif 4 < len_img <= 8:
             row_num = 2
             colum_num = 4
-            fig_size = [12, 5.5]
+            fig_size = [17, 8]
         else:
             raise Exception("Invalid Picture Number!", len_img)
-        if img_list is not None:
-            n = 0
-            plt.figure(figsize=fig_size)
-            for _ in range(len_img):
-                n += 1
-                plt.subplot(row_num, colum_num, n)
-                if name_list is not None:
-                    plt.title(name_list[_])
-                plt.imshow(img_list[_], cmap="gray")
-                if ticks_trun_off:
-                    plt.xticks([])
-                    plt.yticks([])
-                cbar = plt.colorbar()
-                if colorbar_ticks_num is not None:
-                    ticks_val_list = [np.min(img_list[_])+(np.max(img_list[_])
-                                                           - np.min(img_list[_]))/(colorbar_ticks_num-1)*i
-                                      for i in range(colorbar_ticks_num)]
-                    cbar.set_ticks(ticks_val_list)
-            plt.suptitle(plot_title)
-            plt.tight_layout()
-            plt.show()
-            return
+
         name_list = pic.keys()
-        if show_extremum:
-            for _ in name_list:
-                print(_, " min:", np.min(pic[_]), _, "max:", np.max(pic[_]))
-        n = 0
-        plt.figure(figsize=fig_size)
-        for _ in name_list:
-            n += 1
-            plt.subplot(row_num, colum_num, n)
+        fig = plt.figure(figsize=fig_size)
+        fig.suptitle(plot_title, fontsize=12)
+        for n, _ in enumerate(name_list):
+            plt.subplot(row_num, colum_num, n+1)
             plt.title(_)
             plt.imshow(pic[_], cmap="gray")
+            if ticks_trun_off:
+                plt.xticks([])
+                plt.yticks([])
             plt.colorbar()
-        plt.suptitle(plot_title)
         plt.tight_layout()
         plt.show()
 
-    def wavefront(self, wave_front, name=None, extremun=True):
-        amp = np.abs(wave_front)
-        pha = np.angle(wave_front)
+    @staticmethod
+    def wavefront(wave_front, name=None, extremun=True):
+        amp, pha = [np.abs(wave_front), np.angle(wave_front)]
         if extremun:
             if name is not None:
                 print(name, "amp min:", np.min(amp), name, "amp max:", np.max(amp))
@@ -165,45 +149,14 @@ class Check:
             else:
                 print("amp min:", np.min(amp), "amp max:", np.max(amp))
                 print("pha min:", np.min(pha), "pha max:", np.max(pha))
-        plt.figure(figsize=[12, 5.5])
-        plt.subplot(121)
-        plt.imshow(amp, cmap="gray")
-        plt.colorbar()
-        if name is not None:
-            plt.title(name + " amplitude")
-        plt.subplot(122)
-        plt.imshow(pha, cmap="gray")
-        plt.colorbar()
-        if name is not None:
-            plt.title(name + " phase")
+        plt.figure(figsize=[12, 5])
+        for i in range(2):
+            plt.subplot(1, 2, i+1)
+            plt.imshow([amp, pha][i], cmap="gray")
+            plt.colorbar()
+            if name is not None:
+                plt.title(name + [" amplitude", " phase"][i])
         plt.tight_layout(pad=0.5, w_pad=0.4, h_pad=0.4)
-        plt.show()
-
-    def directly_propagate(self, input_list, name=None, extremun=True):
-        if extremun:
-            print("picture 0 min:", np.min(input_list[0]),
-                  "picture 0 max:", np.max(input_list[0]))
-            print("picture 1 min:", np.min(input_list[1]),
-                  "picture 1 max:", np.max(input_list[1]))
-            print("picture 2 min:", np.min(input_list[2]),
-                  "picture 2 max:", np.max(input_list[2]))
-        plt.figure(figsize=[12, 4])
-        plt.subplot(131)
-        plt.imshow(input_list[0], cmap="gray")
-        plt.colorbar()
-        if name is not None:
-            plt.title(name + " infocus")
-        plt.subplot(132)
-        plt.imshow(input_list[1], cmap="gray")
-        plt.colorbar()
-        if name is not None:
-            plt.title(name + " unfocus")
-        plt.subplot(133)
-        plt.imshow(input_list[2], cmap="gray")
-        plt.colorbar()
-        if name is not None:
-            plt.title(name + " defocus")
-        plt.tight_layout()
         plt.show()
 
 
@@ -216,38 +169,56 @@ class Wavefront:
         self.wavelength = wavelength
         self.k = 2*np.pi/wavelength
         self.p_s = pixel_size  # pixel_size
-        self.p_n = wavefront.shape[0:1] if wavefront.shape[0] == wavefront.shape[1] else wavefront.shape
+        self.p_n = wavefront.shape
+
+    def __getattr__(self, item):
+        if item == "amplitude":
+            return abs(self.wavefront)
+        elif item == "phase":
+            return np.angle(self.wavefront)
+
+    @classmethod
+    def from_bioimage(cls, amplitude, phase, wavelength, pixel_size):
+        return cls(amplitude*np.exp(1j*phase), wavelength, pixel_size)
+    
+    def _coordinate_fre(self, img_shape):
+        fx = 2*np.pi*np.linspace(-1/self.p_s/2, 1/self.p_s/2, int(img_shape[-1]))
+        fy = 2*np.pi*np.linspace(-1/self.p_s/2, 1/self.p_s/2, int(img_shape[0]))
+        return np.meshgrid(fx, fy)  # [fx_mat, fy_mat]
+
+    def _coordinate_spatial(self, img_shape):
+        total_size = [self.p_s*shape for shape in img_shape]
+        dx = np.linspace(-total_size[-1]/2, total_size[-1]/2, int(img_shape[-1]))
+        dy = np.linspace(-total_size[0]/2, total_size[0]/2, int(img_shape[0]))
+        return np.meshgrid(dx, dy)  # [dx_mat, dy_mat]
 
     def spatial_transfer(self, d):
-        fx = 2*np.pi*np.linspace(-1/self.p_s/2, 1/self.p_s/2, self.p_n[-1])
-        fy = 2*np.pi*np.linspace(-1/self.p_s/2, 1/self.p_s/2, self.p_n[0])
-        [fx_mat, fy_mat] = np.meshgrid(fx, fy)
+        [fx_mat, fy_mat] = self._coordinate_fre(self.wavefront.shape)
         hz = np.exp(1j*self.k*d * np.sqrt(1-(fx_mat/self.k)**2-(fy_mat/self.k)**2))
         self.wavefront = ift2(ft2(self.wavefront) * hz)
         return self
 
-    def lens_transfer(self, d1, focus, d2, **kwargs):
+    def lens_transfer(self, d1, focus, d2, relative_na=1., **kwargs):
         """
         :param d1: distance between object wavefront and lens.
         :param focus: lens focus.
         :param kwargs: "pupil_plane" is used for checking lens.
         :param d2: distance between lens and imaging plane
-        :return:
+        :param relative_na:
+        :param kwargs: {"obj_na": None, "working_distance": None}
+        :return: self
         """
+
+        # determine the lens size according pixel size and distance between object and lens
         k_p = np.pi/self.p_s
-        sin_theta = k_p / self.k
+        sin_theta = k_p/self.k
         tan_theta = np.tan(np.arcsin(sin_theta))
-        # lens_size = np.array([pixel_num*self.p_s+2*tan_theta*d1
-        #                       for pixel_num in self.p_n])  # [pixel_num_x, pixel_num_y])
-        lens_size = np.array([(pixel_num-np.min(self.p_n))*self.p_s+2*tan_theta*d1
-                             for pixel_num in self.p_n])
-        lens_pixel_num = np.array([l_s//self.p_s for l_s in lens_size])
-        
-        dx = np.linspace(-lens_size[-1]/2, lens_size[-1]/2, int(lens_pixel_num[-1]))
-        dy = np.linspace(-lens_size[0]/2, lens_size[0]/2, int(lens_pixel_num[0]))
-        [dx_mat, dy_mat] = np.meshgrid(dx, dy)
+        lens_pixel_num = np.array([pixel_num-np.min(self.p_n)+2*tan_theta*d1*relative_na//self.p_s
+                                  for pixel_num in self.p_n])
+        [dx_mat, dy_mat] = self._coordinate_spatial(lens_pixel_num)
         t = np.exp(-1j*self.k * (dx_mat**2+dy_mat**2)/focus/2)
-        
+
+        # redefine the object with new coordinate
         target_pl = np.zeros(t.shape).astype(np.complex)
         target_c_x = target_pl.shape[-1]//2
         target_c_y = target_pl.shape[0]//2
@@ -259,40 +230,27 @@ class Wavefront:
         idx_y2 = int(target_c_y - obj_h_half + self.p_n[0])
         target_pl[idx_y1:idx_y2, idx_x1:idx_x2] = self.wavefront
 
-        fx = 2*np.pi*np.linspace(-1/self.p_s/2, 1/self.p_s/2, int(lens_pixel_num[-1]))
-        fy = 2*np.pi*np.linspace(-1/self.p_s/2, 1/self.p_s/2, int(lens_pixel_num[0]))
-        [fx_mat, fy_mat] = np.meshgrid(fx, fy)
+        # transfer function
+        [fx_mat, fy_mat] = self._coordinate_fre(lens_pixel_num)
         hz1 = np.exp(1j*self.k*d1*np.sqrt(1-(fx_mat/self.k)**2-(fy_mat/self.k)**2))
+        hz2 = np.exp(1j*self.k*d2*np.sqrt(1-(fx_mat/self.k)**2-(fy_mat/self.k)**2))
 
+        # propagate
         pre_lens_ft = ft2(target_pl) * hz1
         post_lens_ft = ft2(ift2(pre_lens_ft) * t)
-
-        hz2 = np.exp(1j*self.k*d2*np.sqrt(1-(fx_mat/self.k)**2-(fy_mat/self.k)**2))
-        imaging_pl = ift2(post_lens_ft * hz2)[idx_y1:idx_y2, idx_x1:idx_x2]
-        # return idx_x1, idx_x2, idx_y1, idx_y2, target_pl, pre_lens_ft, post_lens_ft, imaging_pl
-        return imaging_pl
-
-    def get_amplitude(self):
-        return np.abs(self.wavefront)
-
-    def get_phase(self):
-        return np.angle(self.wavefront)
-
-    @classmethod
-    def from_bioimage(cls, amplitude, phase, wavelength, pixel_size):
-        return cls(amplitude*np.exp(1j*phase), wavelength, pixel_size)
+        imaging_ft = post_lens_ft * hz2
+        self.wavefront = ift2(imaging_ft)[idx_y1:idx_y2, idx_x1:idx_x2]
+        return pre_lens_ft, imaging_ft, self.wavefront
 
     @staticmethod
     def forward_propagate(wavefront, wavelength, pixel_size, d):
         wf_obj = Wavefront(wavefront, wavelength, pixel_size)
-        return wf_obj.spatial_transfer(d)
+        return wf_obj.spatial_transfer(d).wavefront
 
     @staticmethod
-    def pupil_propagate(wavefront, wavelength, pixel_size, focus, out_pupil=False):
+    def lens_propagate(wavefront, d1, focus, d2, wavelength, pixel_size):
         wf_obj = Wavefront(wavefront, wavelength, pixel_size)
-        if out_pupil:
-            return wf_obj.lens_transfer(focus, pupil_plane=True)
-        return wf_obj.lens_transfer(focus)
+        return wf_obj.lens_transfer(d1=d1, focus=focus, d2=d2).wavefront
 
     @staticmethod
     def multi_focus_img(wavefront, delta_d, wavelength, pixel_size):
@@ -333,33 +291,9 @@ def main():
     amp_img = img_val_norm(resize(sio.imread(imgs_fpath_list[0]), (512, 512)), 0.9, 1)
     pha_img = img_val_norm(resize(sio.imread(imgs_fpath_list[1]), (512, 512)), 0.5, 1.5)
 
-    # Imaging
-    # EPSILON = 1e6
-    # DELTA_D = 1e-3
-    # WAVELENGTH = 500e-9
-    # PIXEL_SIZE = 5e-6
-    # i_focus, i_minus, i_plus = Wavefront.multi_focus_img(Wavefront.from_bioimage(amp_img, pha_img),
-    #                                                      delta_d=DELTA_D,
-    #                                                      wavelength=WAVELENGTH,
-    #                                                      pixel_size=PIXEL_SIZE)
-    # p_xy = tie_solution(i_focus, i_minus, i_plus,
-    #                     delta_d=DELTA_D,
-    #                     wavelength=WAVELENGTH,
-    #                     pixel_size=PIXEL_SIZE,
-    #                     epsilon=EPSILON)
-    #
-    # plt.figure(figsize=[17, 5])
-    # plt.subplot(131)
-    # plt.imshow(pha_img, cmap="gray")
-    # plt.colorbar()
-    # plt.subplot(132)
-    # plt.imshow((i_minus+i_plus)/2, cmap="gray")
-    # plt.colorbar()
-    # plt.subplot(133)
-    # plt.imshow(p_xy, cmap="gray")
-    # plt.colorbar()
-    # plt.tight_layout()
-    # plt.show()
+    wf_obj = Wavefront.from_bioimage(amp_img, pha_img, 6e-9, 55e-6)
+    print(wf_obj.k)
+    print(wf_obj.amplitude.shape)
 
 
 if __name__ == '__main__':
