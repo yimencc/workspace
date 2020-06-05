@@ -198,7 +198,7 @@ class Wavefront:
         self.wavefront = ift2(ft2(self.wavefront) * hz)
         return self
 
-    def lens_transfer(self, d1, focus, d2, relative_na=1., **kwargs):
+    def lens_transfer(self, d1, focus, d2, **kwargs):
         """
         :param d1: distance between object wavefront and lens.
         :param focus: lens focus.
@@ -213,7 +213,7 @@ class Wavefront:
         k_p = np.pi/self.p_s
         sin_theta = k_p/self.k
         tan_theta = np.tan(np.arcsin(sin_theta))
-        lens_pixel_num = np.array([pixel_num-np.min(self.p_n)+2*tan_theta*d1*relative_na//self.p_s
+        lens_pixel_num = np.array([pixel_num-np.min(self.p_n)+tan_theta*d1//self.p_s
                                   for pixel_num in self.p_n])
         [dx_mat, dy_mat] = self._coordinate_spatial(lens_pixel_num)
         t = np.exp(-1j*self.k * (dx_mat**2+dy_mat**2)/focus/2)
@@ -240,7 +240,7 @@ class Wavefront:
         post_lens_ft = ft2(ift2(pre_lens_ft) * t)
         imaging_ft = post_lens_ft * hz2
         self.wavefront = ift2(imaging_ft)[idx_y1:idx_y2, idx_x1:idx_x2]
-        return pre_lens_ft, imaging_ft, self.wavefront
+        return self
 
     @staticmethod
     def forward_propagate(wavefront, wavelength, pixel_size, d):
