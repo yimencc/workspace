@@ -140,7 +140,7 @@ class Check:
         plt.show()
 
     @staticmethod
-    def wavefront(wave_front, name=None, extremun=True):
+    def wavefront(wave_front, name=None, extremun=False):
         amp, pha = [np.abs(wave_front), np.angle(wave_front)]
         if extremun:
             if name is not None:
