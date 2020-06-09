@@ -294,6 +294,36 @@ def tie_solution(i_focus, i_minus, i_plus, delta_d, wavelength, pixel_size, epsi
     return ift2((temp_x+temp_y)*fmat_square).real
 
 
+class Registration:
+
+    def __init__(self, moving, fixed, **kwargs):
+        self.moving = moving
+        self.fixed = fixed
+        _, self.crop_pos_box = self.config(**kwargs)
+        self.moving_cropped, self.fixed_cropped = self._update_reg()
+
+    def config(self, **kwargs):
+        # crop strategy
+        # crop_box: [y_center, x_center, height, width]
+        crop_box = [0.5, 0.5, 0.9, 0.9]
+        if "crop_box" in kwargs.keys():
+            crop_box = kwargs["crop_box"]
+        fix_shape = self.fixed.shape
+        crop_box_shape = [int(ratio*fix_shape[i % 2]) for i, ratio in enumerate(crop_box)]
+
+        # convert to position parameters
+        crop_pos_x1 = crop_box_shape[0] - crop_box_shape[2]//2
+        crop_pos_x2 = crop_pos_x1 + crop_box_shape[2]
+        crop_pos_y1 = crop_box_shape[1] - crop_box_shape[3]//2
+        crop_pos_y2 = crop_pos_y1 + crop_box_shape[3]
+        crop_pos_box = [crop_pos_x1, crop_pos_x2, crop_pos_y1, crop_pos_y2]
+        return crop_box_shape, crop_pos_box
+
+    def _update_reg(self):
+        a, b, c, d = self.crop_pos_box
+        return self.moving[a:b, c:d], self.fixed[a:b, c:d]
+
+
 def main():
     # import images
     imgs_path = "D:\\Workspace\\datasets\\open_image_val_standard"
@@ -302,9 +332,8 @@ def main():
     amp_img = img_val_norm(resize(sio.imread(imgs_fpath_list[0]), (512, 512)), 0.9, 1)
     pha_img = img_val_norm(resize(sio.imread(imgs_fpath_list[1]), (512, 512)), 0.5, 1.5)
 
-    wf_obj = Wavefront.from_bioimage(amp_img, pha_img, 6e-9, 5e-6)
-    print(wf_obj.k)
-    print(wf_obj.amplitude.shape)
+    reg_obj = Registration(amp_img, pha_img)
+    reg_obj.config()
 
 
 if __name__ == '__main__':
