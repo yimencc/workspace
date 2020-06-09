@@ -12,6 +12,7 @@ import sys
 import skimage.io as sio
 from skimage.transform import resize
 import matplotlib.pyplot as plt
+from scipy import io as spio
 
 sys.path.append("D:\\Workspace\\git_proj\\CCCode")
 from imaging_process import Check, Wavefront, img_val_norm
@@ -21,7 +22,6 @@ from cc_math import mse_compute
 def iterative_based_tie(img_list, z_list, wavelength, pixel_size, n_iter=10):
     z_len = len(img_list)
     cen_idx = int((len(img_list)-1)//2)
-    z_list.insert(cen_idx, 0)
     principle_img = img_list[cen_idx]
 
     estimate_phase = np.ones(principle_img.shape)
@@ -29,11 +29,13 @@ def iterative_based_tie(img_list, z_list, wavelength, pixel_size, n_iter=10):
 
     # iteration
     estimate_updated = estimate_wf
+    Check.wavefront(estimate_updated, name="the first")
     idx_list_part1 = list(range(z_len))[cen_idx:]
     idx_list_part2 = list(range(z_len))[:z_len-1]
     idx_list_part2.sort(reverse=True)
     idx_list_part3 = list(range(z_len))[1:cen_idx+1]
     idx_list = idx_list_part1 + idx_list_part2 + idx_list_part3
+    print(idx_list)
 
     es_list = []
     for n in range(n_iter):
@@ -42,11 +44,13 @@ def iterative_based_tie(img_list, z_list, wavelength, pixel_size, n_iter=10):
             delta_z = z_list[idx_list[i+1]] - z_list[idx_list[i]]
             estimate_propagated = Wavefront.forward_propagate(estimate_updated, wavelength, pixel_size, delta_z)
             estimate_updated = np.sqrt(img_list[idx_list[i+1]])*np.exp(1j*np.angle(estimate_propagated))
+            # print("delta_z: {}".format(delta_z))
+            # Check.wavefront(estimate_updated, name=str(z_list[idx_list[i+1]]))
         es_list.append(estimate_updated)
     return es_list
 
 
-def main():
+def post_code1():
     WAVELENGTH = 632.8e-9
     PIXEL_SIZE = 5e-6
 
@@ -79,6 +83,24 @@ def main():
     plt.plot(mse)
     plt.show()
     Check.wavefront(e_u[-1])
+
+
+def main():
+    multi_focus_imgs = spio.loadmat("..\\source\\l.mat")
+    l3_mat = spio.loadmat("..\\source\\r1.mat")
+    l4_mat = spio.loadmat("..\\source\\r2.mat")
+    l2 = multi_focus_imgs["Il"]
+    l1 = multi_focus_imgs["Ir"]
+    r1 = l3_mat["Il"]
+    r2 = l4_mat["Il"]
+
+    img_list = [l2, l1, r1, r2]
+    z_list = [24e-6, 12e-6, -12e-6, -24e-6]
+    Check.multi_img(l2=l2, l1=l1, r1=r1, r2=r2)
+    e_u = iterative_based_tie(img_list, z_list, 532e-9, 5e-7, 200)
+    Check.wavefront(e_u[-1], name="the last ")
+    out = Wavefront.forward_propagate(e_u[-1], 532e-9, 5e-7, -12e-6)
+    Check.wavefront(out)
 
 
 if __name__ == '__main__':

@@ -171,6 +171,12 @@ class Wavefront:
         self.p_s = pixel_size  # pixel_size
         self.p_n = wavefront.shape
 
+    def __getattribute__(self, item):
+        if item == "wavefront_ft":
+            return ft2(object.__getattribute__(self, "wavefront"))
+        else:
+            return object.__getattribute__(self, item)
+
     def __getattr__(self, item):
         if item == "amplitude":
             return abs(self.wavefront)
@@ -198,21 +204,26 @@ class Wavefront:
         self.wavefront = ift2(ft2(self.wavefront) * hz)
         return self
 
+    def lens_transmit(self, focus):
+        lens_shape = self.wavefront.shape
+        [dx_mat, dy_mat] = self._coordinate_spatial(lens_shape)
+        t = np.exp(-1j*self.k*(dx_mat**2+dy_mat**2)/2/focus)
+        self.wavefront = self.wavefront*t
+        return self
+
     def lens_transfer(self, d1, focus, d2, **kwargs):
         """
         :param d1: distance between object wavefront and lens.
         :param focus: lens focus.
         :param kwargs: "pupil_plane" is used for checking lens.
         :param d2: distance between lens and imaging plane
-        :param relative_na:
         :param kwargs: {"obj_na": None, "working_distance": None}
         :return: self
         """
-
         # determine the lens size according pixel size and distance between object and lens
-        k_p = np.pi/self.p_s
-        sin_theta = k_p/self.k
-        tan_theta = np.tan(np.arcsin(sin_theta))
+        k_max = np.pi/self.p_s
+        cos_theta_max = k_max/self.k
+        tan_theta = np.tan(np.pi-np.arccos(cos_theta_max))
         lens_pixel_num = np.array([pixel_num-np.min(self.p_n)+tan_theta*d1//self.p_s
                                   for pixel_num in self.p_n])
         [dx_mat, dy_mat] = self._coordinate_spatial(lens_pixel_num)
@@ -291,7 +302,7 @@ def main():
     amp_img = img_val_norm(resize(sio.imread(imgs_fpath_list[0]), (512, 512)), 0.9, 1)
     pha_img = img_val_norm(resize(sio.imread(imgs_fpath_list[1]), (512, 512)), 0.5, 1.5)
 
-    wf_obj = Wavefront.from_bioimage(amp_img, pha_img, 6e-9, 55e-6)
+    wf_obj = Wavefront.from_bioimage(amp_img, pha_img, 6e-9, 5e-6)
     print(wf_obj.k)
     print(wf_obj.amplitude.shape)
 
