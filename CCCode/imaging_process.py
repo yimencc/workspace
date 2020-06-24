@@ -17,8 +17,8 @@ def ift2(img):
 
 
 def img_val_norm(img, min_val=0., max_val=1.):
-    img -= img.min()
-    img /= img.max()
+    img -= np.min(img)
+    img = img / np.max(img)
     if min_val != 0. or max_val != 1.:
         img *= max_val-min_val
         img += min_val
