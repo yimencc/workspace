@@ -17,12 +17,41 @@ def ift2(img):
 
 
 def img_val_norm(img, min_val=0., max_val=1.):
-    img -= np.min(img)
+    img = img - np.min(img)
     img = img / np.max(img)
-    if min_val != 0. or max_val != 1.:
-        img *= max_val-min_val
-        img += min_val
+    img *= max_val-min_val
+    img += min_val
     return img
+
+
+def multi_img_val_norm(*images, low=0., high=1.):
+    images = list(images)
+    min_val = np.min(images)
+    max_val = np.max(images)
+    images = [(img-min_val)/(max_val-min_val) for img in images]
+    images = [img*(high-low) + low for img in images]
+    return images
+
+
+def tie_solution(i_focus, i_minus, i_plus, delta_d, wavelength, pixel_size, epsilon):
+    # set constants
+    assert i_focus.shape == i_minus.shape == i_plus.shape
+    p_n = i_focus.shape
+    fx = 2*np.pi*np.linspace(-1/pixel_size/2, 1/pixel_size/2, p_n[-1])
+    fy = 2*np.pi*np.linspace(-1/pixel_size/2, 1/pixel_size/2, p_n[0])
+    [fx_mat, fy_mat] = np.meshgrid(fx, fy)
+    k = 2 * np.pi / wavelength
+
+    # TIE solution
+    derivative = - k * (i_plus - i_minus) / (2 * delta_d)
+    fmat_square = 1/(fx_mat**2+fy_mat**2+epsilon)
+    temp1 = ft2(derivative)*fmat_square
+    temp_x = ift2(temp1*fx_mat) / i_focus
+    temp_x = ft2(temp_x)*fx_mat
+    temp_y = ift2(temp1*fy_mat) / i_focus
+    temp_y = ft2(temp_y)*fy_mat
+
+    return ift2((temp_x+temp_y)*fmat_square).real
 
 
 class ImageProcess:
@@ -155,8 +184,8 @@ class Check:
             plt.imshow([amp, pha][i], cmap="gray")
             plt.colorbar()
             if name is not None:
-                plt.title(name + [" amplitude", " phase"][i])
-        plt.tight_layout(pad=0.5, w_pad=0.4, h_pad=0.4)
+                plt.title(name + [" amplitude", " phase"][i], fontsize=14)
+        plt.tight_layout(rect=[0, 0, 1, 0.95])
         plt.show()
 
 
@@ -265,33 +294,12 @@ class Wavefront:
 
     @staticmethod
     def multi_focus_img(wavefront, delta_d, wavelength, pixel_size):
-        wavefront_minus = Wavefront.forward_propagate(wavefront, wavelength, pixel_size, -delta_d).wavefront
-        wavefront_plus = Wavefront.forward_propagate(wavefront, wavelength, pixel_size, delta_d).wavefront
+        wavefront_minus = Wavefront.forward_propagate(wavefront, wavelength, pixel_size, -delta_d)
+        wavefront_plus = Wavefront.forward_propagate(wavefront, wavelength, pixel_size, delta_d)
         i_focus = abs(wavefront*wavefront.conj())
         i_minus = abs(wavefront_minus*wavefront_minus.conj())
         i_plus = abs(wavefront_plus*wavefront_plus.conj())
         return i_focus, i_minus, i_plus
-
-
-def tie_solution(i_focus, i_minus, i_plus, delta_d, wavelength, pixel_size, epsilon):
-    # set constants
-    assert i_focus.shape == i_minus.shape == i_plus.shape
-    p_n = i_focus.shape
-    fx = 2*np.pi*np.linspace(-1/pixel_size/2, 1/pixel_size/2, p_n[-1])
-    fy = 2*np.pi*np.linspace(-1/pixel_size/2, 1/pixel_size/2, p_n[0])
-    [fx_mat, fy_mat] = np.meshgrid(fx, fy)
-    k = 2 * np.pi / wavelength
-
-    # TIE solution
-    derivative = k * (i_plus - i_minus) / (2 * delta_d)
-    fmat_square = 1/(fx_mat**2+fy_mat**2+epsilon)
-    temp1 = ft2(derivative)*fmat_square
-    temp_x = ift2(temp1*fx_mat) / i_focus
-    temp_x = ft2(temp_x)*fx_mat
-    temp_y = ift2(temp1*fy_mat) / i_focus
-    temp_y = ft2(temp_y)*fy_mat
-
-    return ift2((temp_x+temp_y)*fmat_square).real
 
 
 class Registration:
@@ -326,14 +334,10 @@ class Registration:
 
 def main():
     # import images
-    imgs_path = "D:\\Workspace\\datasets\\open_image_val_standard"
-    imgs_name_list = os.listdir(imgs_path)[0:2]
-    imgs_fpath_list = [os.path.join(imgs_path, img_name) for img_name in imgs_name_list]
-    amp_img = img_val_norm(resize(sio.imread(imgs_fpath_list[0]), (512, 512)), 0.9, 1)
-    pha_img = img_val_norm(resize(sio.imread(imgs_fpath_list[1]), (512, 512)), 0.5, 1.5)
-
-    reg_obj = Registration(amp_img, pha_img)
-    reg_obj.config()
+    a = np.array([3, 4, 5])
+    b = np.array([1, 2, 3])
+    images = multi_img_val_norm(a, b)
+    print(images)
 
 
 if __name__ == '__main__':
