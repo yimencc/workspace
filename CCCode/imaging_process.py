@@ -43,7 +43,7 @@ def tie_solution(i_focus, i_minus, i_plus, delta_d, wavelength, pixel_size, epsi
     k = 2 * np.pi / wavelength
 
     # TIE solution
-    derivative = - k * (i_plus - i_minus) / (2 * delta_d)
+    derivative = k * (i_plus - i_minus) / (2 * delta_d)
     fmat_square = 1/(fx_mat**2+fy_mat**2+epsilon)
     temp1 = ft2(derivative)*fmat_square
     temp_x = ift2(temp1*fx_mat) / i_focus
@@ -122,54 +122,48 @@ class Check:
             self.name = name
 
     @staticmethod
-    def multi_img(plot_title=None,
-                  ticks_trun_off=True,
-                  colorbar_ticks_num=None,
-                  **pic):
-        """
-        :param plot_title:
-        :param ticks_trun_off:
-        :param colorbar_ticks_num:
-        :param pic:
-        :return:
-
-        Example:
-            Check.multi_img(img_1=img_a, img_2=img_b)
-        """
+    def multi_img(title=None, ticks=True, colorbar=True,
+                  colorbar_ticks_num=None, **pic):
 
         len_img = len(pic)
-
         if 0 < len_img <= 2:
             row_num = 1
             colum_num = 2
-            fig_size = [12, 5]
+            fig_size = [12, 5.5]
+            rect = [0.02, 0.02, 1., 0.93]
+            pad = [1.08, None, None]
         elif 2 < len_img <= 4:
             row_num = 2
             colum_num = 2
-            fig_size = [12, 9]
+            fig_size = [10, 8.5]
+            rect = [0.00, 0.02, 1, 0.95]
+            pad = [1.08, 2., None]
         elif 4 < len_img <= 8:
             row_num = 2
             colum_num = 4
             fig_size = [17, 8]
+            rect = [0., 0., 1, 0.93]
+            pad = [1.08, 2., None]
         else:
             raise Exception("Invalid Picture Number!", len_img)
 
         name_list = pic.keys()
         fig = plt.figure(figsize=fig_size)
-        fig.suptitle(plot_title, fontsize=12)
-        for n, _ in enumerate(name_list):
+        fig.suptitle(title, fontsize=18)
+        for n, name in enumerate(name_list):
             plt.subplot(row_num, colum_num, n+1)
-            plt.title(_)
-            plt.imshow(pic[_], cmap="gray")
-            if ticks_trun_off:
+            plt.title(name, fontsize=14)
+            plt.imshow(pic[name], cmap="gray")
+            if not ticks:
                 plt.xticks([])
                 plt.yticks([])
-            plt.colorbar()
-        plt.tight_layout()
+            if colorbar:
+                plt.colorbar()
+        plt.tight_layout(pad=pad[0], h_pad=pad[1], w_pad=pad[2], rect=rect)
         plt.show()
 
     @staticmethod
-    def wavefront(wave_front, name=None, extremun=False):
+    def wavefront(wave_front, name=None, extremun=False, ticks=True, colobar=True):
         amp, pha = [np.abs(wave_front), np.angle(wave_front)]
         if extremun:
             if name is not None:
@@ -178,14 +172,18 @@ class Check:
             else:
                 print("amp min:", np.min(amp), "amp max:", np.max(amp))
                 print("pha min:", np.min(pha), "pha max:", np.max(pha))
-        plt.figure(figsize=[12, 5])
+        plt.figure(figsize=[12, 5.5])
+        plt.suptitle(name, fontsize=20)
         for i in range(2):
             plt.subplot(1, 2, i+1)
             plt.imshow([amp, pha][i], cmap="gray")
-            plt.colorbar()
-            if name is not None:
-                plt.title(name + [" amplitude", " phase"][i], fontsize=14)
-        plt.tight_layout(rect=[0, 0, 1, 0.95])
+            if colobar:
+                plt.colorbar()
+            if not ticks:
+                plt.xticks([])
+                plt.yticks([])
+            plt.title([" amplitude", " phase"][i], fontsize=16)
+        plt.tight_layout(w_pad=0.1, rect=[0.02, 0.02, 0.98, 0.93])
         plt.show()
 
 
@@ -334,10 +332,13 @@ class Registration:
 
 def main():
     # import images
-    a = np.array([3, 4, 5])
-    b = np.array([1, 2, 3])
-    images = multi_img_val_norm(a, b)
-    print(images)
+    path = "D:\Workspace\Git_Proj\Temp\data"
+    img1 = resize(sio.imread(os.path.join(path, "a.jpg"), as_gray=True), (512, 512))
+    img2 = resize(sio.imread(os.path.join(path, "b.jpg"), as_gray=True), (512, 512))
+    # a = np.random.normal(size=(2, 512, 512))
+    wf = img1 * np.exp(1j*img2)
+
+    Check.multi_img(img1=img1, img2=img2, colorbar=True, ticks=True)
 
 
 if __name__ == '__main__':
